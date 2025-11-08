@@ -1,0 +1,141 @@
+\documentclass[12pt]{article}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{amsmath}     % For math equations
+\usepackage{amssymb}     % For advanced math symbols
+\usepackage{amsfonts} % For math fonts
+\usepackage{gvv}
+\usepackage{esint}
+\usepackage[utf8]{inputenc}
+\usepackage{tabularx}
+\usepackage{booktabs}  % nicer lines (optional)
+\usepackage{graphicx}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\titleformat{\section}{\bfseries\large}{\thesection.}{1em}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{booktabs,tabularx,array,ragged2e}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Large Software Assignment Error Analysis - Image Compression using truncated SVD}
+\end{center}
+
+\begin{center}
+    Aryansingh Sonaye 
+
+    7 Nov 2025
+\end{center}
+
+\section*{Note: elements of A and Ak are normalized from range [0,255] to range [0,1](to avoid overflow), hence Frobenius error shown is less by factor of 255 of actual image matrices, but relative error is same. }
+
+\begin{table}[H]
+\centering
+\caption{Rank $k$ vs Error vs Compression Ratio (Globe Image)}
+\begin{tabularx}{\textwidth}{c c c c X}
+\toprule
+\textbf{Rank $k$} & \textbf{Frobenius Error} & \textbf{Relative Error} & \textbf{Compression Ratio} & \textbf{Visual Notes} \\
+\midrule
+2   & 128.725418 & 0.207343 & 214.638 & Very blurry, almost no detail \\
+5   & 81.193234  & 0.130781 & 85.859 & Continents barely recognizable \\
+20  & 41.703581  & 0.067174 & 21.463 & Shape visible, still smoothed \\
+50  & 24.257422  & 0.039072 & 8.585 & Good clarity, slight blur \\
+100 & 14.403657  & 0.023201 & 4.292 & High quality, minor loss \\
+200 & 7.010167   & 0.011292 & 2.146 & Nearly identical to original \\
+300 & 3.853171   & 0.006206 & 1.430 & Indistinguishable from original \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Rank $k$ vs Error vs Compression Ratio (Einstein Image)}
+\begin{tabularx}{\textwidth}{c c c c X}
+\toprule
+\textbf{Rank $k$} & \textbf{Frobenius Error} & \textbf{Relative Error} & \textbf{Compression Ratio} & \textbf{Visual Notes} \\
+\midrule
+2   & 24.973135 & 0.291993 & 45.869  & Very blurry, face barely recognizable \\
+5   & 18.484639 & 0.216127 & 18.347 & Very blurry; facial details unclear \\
+20  & 8.339449  & 0.097507 & 4.586 & Face recognizable but soft \\
+50  & 3.452953  & 0.040373 & 1.834 & Good quality; fine details appear \\
+100 & 0.646199  & 0.007556 & 0.917 & Nearly lossless reconstruction \\
+200 & $\approx 0$ & $\approx 0$ & 0.458 & Almost exact reconstruction \\
+300 & $\approx 0$ & $\approx 0$ & 0.305 & Indistinguishable from original \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Rank $k$ vs Error vs Compression Ratio (Greyscale Image)}
+\begin{tabularx}{\textwidth}{c c c c X}
+\toprule
+\textbf{Rank $k$} & \textbf{Frobenius Error} & \textbf{Relative Error} & \textbf{Compression Ratio} & \textbf{Visual Notes} \\
+\midrule
+2   & 67.324011  & 0.088694 & 255.885 & Only broad intensity visible; very blurry \\
+5   & 43.711017  & 0.057586 & 102.354 & Shapes recognizable; edges soft \\
+20  & 14.934093  & 0.019674 & 25.587 & Good clarity; noticeable smoothness \\
+50  & 4.549560   & 0.005994 & 10.234 & Very good detail; visually sharp \\
+100 & 2.009199   & 0.002647 & 5.117 & Nearly lossless reconstruction \\
+200 & 1.605776   & 0.002115 & 2.558 & Almost identical to original \\
+300 & 1.283533   & 0.001691 & 1.705 & Indistinguishable from original \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+
+
+The tables report the Frobenius error, relative error, compression ratio, and visual quality of the reconstructed images for different values of rank $k$. From these results, we can observe a clear relationship between $k$ and the reconstruction quality.
+
+\subsection*{General Trends}
+
+\begin{itemize}
+    \item For very small values of $k$ (e.g., $k = 2$ or $k = 5$), both the Frobenius error and the relative error are large. The reconstructed images appear very blurry and lack detail. Only the most dominant large-scale structures of the image are preserved.
+    
+    \item As the rank $k$ increases, the error decreases steadily. The reconstructed images begin to show sharper edges and clearer shape boundaries. Fine details start to appear.
+    
+    \item When $k$ is sufficiently large (close to $\min(m,n)$), the reconstructed image becomes almost identical to the original. The relative error becomes extremely small, and further increases in $k$ result in minimal visual improvement while increasing storage cost.
+\end{itemize}
+
+\subsection*{Image-Specific Observations}
+
+\textbf{1) Globe Image}  
+The globe has smooth shading and gradual intensity variations. This type of image requires a higher rank $k$ to be reconstructed accurately.
+\begin{itemize}
+    \item For $k = 20$ and $k = 50$, the overall shape and shading are visible but still somewhat smoothed.
+    \item At $k = 100$ and above, the reconstruction is high quality with very minor loss.
+    \item For $k = 200$ or $k = 300$, the reconstructed image is almost indistinguishable from the original.
+\end{itemize}
+
+\textbf{2) Einstein Portrait}  
+The portrait image has strong edges and high contrast, which means that the most important information is captured by the first few singular vectors.
+\begin{itemize}
+    \item Even at $k = 20$, the face is clearly recognizable.
+    \item At $k = 50$, the image appears visually very close to the original.
+    \item At $k = 100$ or higher, the error becomes extremely small and further increases in $k$ provide almost no visible difference.
+\end{itemize}
+
+\textbf{3) Greyscale Pattern Image}  
+This image contains repeated gradients, so the singular values decrease at a moderate rate.
+\begin{itemize}
+    \item Good clarity is achieved around $k = 20$ to $k = 50$.
+    \item For $k = 100$ and above, the reconstruction is nearly lossless.
+    \item Increasing $k$ beyond this range yields diminishing visual improvement.
+\end{itemize}
+
+
+\end{document}

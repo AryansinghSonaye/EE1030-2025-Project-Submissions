@@ -1,0 +1,371 @@
+\documentclass[12pt]{article}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{amsmath}     % For math equations
+\usepackage{amssymb}     % For advanced math symbols
+\usepackage{amsfonts} % For math fonts
+\usepackage{gvv}
+\usepackage{esint}
+\usepackage[utf8]{inputenc}
+\usepackage{tabularx}
+\usepackage{booktabs}  % nicer lines (optional)
+\usepackage{graphicx}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\titleformat{\section}{\bfseries\large}{\thesection.}{1em}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{booktabs,tabularx,array,ragged2e}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Large Software Assignment - Image Compression using truncated SVD}
+\end{center}
+
+\begin{center}
+    Aryansingh Sonaye 
+
+    7 Nov 2025
+\end{center}
+
+\section*{Summary of Gilbert Strang's Video}
+
+\noindent
+In the lecture, I learned that any $m \times n$ matrix $\myvec{A}$ can be factored using the Singular Value Decomposition (SVD) as:
+\begin{align}
+    \myvec{A} = \myvec{U}\,\Sigma\,\myvec{V}^{\top},
+\end{align}
+where $\Sigma$ is a diagonal matrix containing the non-negative singular values
+\begin{align}
+    \sigma_1 \geq \sigma_2 \geq \cdots,
+\end{align}
+and $\myvec{U}$ and $\myvec{V}$ are orthogonal matrices containing the left and right singular vectors respectively.
+
+\medskip
+One key idea from the video is how SVD explains the relationship between the \textbf{row space} and \textbf{column space} of $\myvec{A}$. The vectors $\vec{v}_i$ (columns of $\myvec{V}$) describe important directions in the row space, while the vectors $\vec{u}_i$ (columns of $\myvec{U}$) describe the corresponding directions in the column space.
+
+\medskip
+When $\myvec{A}$ acts on a right singular vector $\vec{v}_i$, it \textbf{stretches} it by $\sigma_i$ and maps it to the corresponding left singular vector $\vec{u}_i$:
+\begin{align}
+    \myvec{A}\,\vec{v}_i = \sigma_i \vec{u}_i.
+\end{align}
+
+\medskip
+The video also connects SVD with eigenvalue problems. Since $\myvec{A}^{\top}\myvec{A}$ and $\myvec{A}\myvec{A}^{\top}$ are symmetric matrices, they admit orthogonal eigenvectors:
+\begin{align}
+    \myvec{A}^{\top}\myvec{A}\,\vec{v}_i &= \sigma_i^2 \vec{v}_i, \\
+    \myvec{A}\myvec{A}^{\top}\,\vec{u}_i &= \sigma_i^2 \vec{u}_i.
+\end{align}
+Thus, $\vec{v}_i$ are eigenvectors of $\myvec{A}^{\top}\myvec{A}$, and $\vec{u}_i$ are eigenvectors of $\myvec{A}\myvec{A}^{\top}$, with the singular values $\sigma_i$ being the square roots of the corresponding eigenvalues.
+
+\medskip
+Overall, the lecture shows why SVD is useful: it applies to any real matrix, provides orthogonal bases, identifies dominant structural directions in data, and forms the basis for dimensionality reduction and compression. The image compression method used in this assignment is directly based on this idea, where we reconstruct the image using only the top $k$ singular values.
+
+
+\newpage
+
+\section*{Mathematical Idea}
+
+We treat a greyscale image as a matrix :
+\begin{align}
+\myvec{A} \in \mathbb{R}^{m \times n},
+\end{align}
+
+We want the truncated SVD,
+\begin{align}
+\myvec{A}_k = \sum_{i=1}^{k} \sigma_i \, \vec{u}_i \vec{v}_i^{\top},
+\end{align}
+where $\sigma_1 \ge \sigma_2 \ge \cdots$ are the singular values, 
+$\vec{u}_i \in \mathbb{R}^{m}$ are left singular vectors, and 
+$\vec{v}_i \in \mathbb{R}^{n}$ are right singular vectors.
+
+Instead of computing a full SVD, we iteratively recover the top $k$ triplets $(\sigma_i, \vec{u}_i, \vec{v}_i)$ using power iteration and deflation.
+
+\subsection*{Power Iteration}
+
+Start with a unit vector $\vec{v}$ and iterate:
+\begin{align}
+\vec{u} &\leftarrow \frac{\myvec{A}\vec{v}}{\|\myvec{A}\vec{v}\|},\\[4pt]
+\vec{v} &\leftarrow \frac{\myvec{A}^{\top}\vec{u}}{\|\myvec{A}^{\top}\vec{u}\|},\\[4pt]
+\sigma &\approx \|\myvec{A}\vec{v}\|.
+\end{align}
+Repeat until $\vec{v}$ converges.
+
+\subsection*{Deflation}
+
+After finding $(\sigma, \vec{u}, \vec{v})$,
+\begin{align}
+\myvec{A} \leftarrow \myvec{A} - \sigma \, \vec{u}\vec{v}^{\top}.
+\end{align}
+This removes the rank-1 contribution so the next iteration finds the next singular component.
+
+\subsection*{Reconstruction}
+
+\begin{align}
+\myvec{A}_k = \sum_{i=1}^{k} \sigma_i \vec{u}_i \vec{v}_i^{\top}.
+\end{align}
+
+\subsection*{Frobenius Error}
+\begin{align}
+\|\myvec{A} - \myvec{A}_k\|_F, \qquad
+\text{Relative Error} = \frac{\|\myvec{A} - \myvec{A}_k\|_F}{\|\myvec{A}\|_F}.
+\end{align}
+
+\subsection*{Compression Ratio}
+\begin{align}
+\text{ratio} = \frac{mn}{k(m+n+1)}.
+\end{align}
+
+\section*{Pseudocode}
+
+\begin{verbatim}
+READ_AND_NORMALIZE_IMAGE(filename,w,h):
+    data, (w, h) ← stbi_load(filename, channels=1)
+    A ← array of size w*h
+    for each pixel i:
+        A[i] = data[i] / 255.0
+    return (A)
+
+WRITE_IMAGE_JPG(filename, img, w, h):
+    convert img values back in [0,255]
+    stbi_write_jpg(...)
+
+DOT(n, x, y) = sum over i of x[i]*y[i]
+NORM(n, x) = sqrt(DOT(x,x))
+
+MATVEC: y = A*x
+MATVEC_T: y = A^T*x
+
+RANDOM_UNIT_VECTOR(n, v):
+    fill v with random values in [-1,1]
+    normalize v
+
+POWER_ITERATION(A,m,n,u,v,max,err):
+    RANDOM_UNIT_VECTOR(v)
+    repeat max times:
+        u = A*v ; normalize u
+        v = A^T*u ; normalize v
+        sigma = ||A*v||
+        stop if v converges
+    return sigma
+
+ADD_RANK1(A, m, n, sigma, u, v):
+    A = A + sigma * u * v^T
+
+TOP_K_SVD(A, m, n, k, Sigma, U, V, max, err):
+    for i = 1..k:
+        sigma, u, v = POWER_ITERATION
+        store u, v, sigma
+        A = A - sigma*u*v^T   // deflation
+
+RECONSTRUCT(Ak, k, Sigma, U, V):
+    Ak = sum_{i=1..k} sigma_i * u_i * v_i^T
+
+MAIN:
+    load input image -> A
+    save A copy as A0
+    run TOP_K_SVD(A)
+    reconstruct Ak
+    compute errors and compression ratio
+    write Ak to JPG
+\end{verbatim}
+
+\textbf{Convergence of the Power Method (Proof)}
+
+Let $\myvec{A}\in\mathbb{R}^{n\times n}$ be diagonalizable with eigenpairs
+\begin{align}
+\myvec{A}\vec{x}_i = \lambda_i \vec{x}_i, \qquad i=1,\dots,n,
+\end{align}
+and let the eigenvalues be ordered by magnitude
+\begin{align}
+|\lambda_1| > |\lambda_2| \ge \cdots \ge |\lambda_n|.
+\end{align}
+Suppose the initial guess $\vec{x}_0$ can be written as
+\begin{align}
+\vec{x}_0 = c_1\vec{x}_1 + c_2\vec{x}_2 + \cdots + c_n\vec{x}_n, \qquad c_1\neq 0.
+\end{align}
+Then the iterates $\myvec{A}^k\vec{x}_0$ approach a nonzero multiple of the dominant eigenvector $\vec{x}_1$. Equivalently,
+\begin{align}
+\frac{\myvec{A}^k \vec{x}_0}{\|\myvec{A}^k \vec{x}_0\|}
+\;\longrightarrow\;
+\pm\frac{\vec{x}_1}{\|\vec{x}_1\|}
+\qquad \text{as } k\to\infty.
+\end{align}
+
+Since the eigenvectors form a basis, write
+\begin{align}
+\vec{x}_0 = c_1\vec{x}_1 + c_2\vec{x}_2 + \cdots + c_n\vec{x}_n.
+\end{align}
+
+Multiplying repeatedly by $\myvec{A}$ gives
+\begin{align}
+\myvec{A}^k \vec{x}_0
+&= c_1 \lambda_1^{k}\vec{x}_1 + c_2 \lambda_2^{k}\vec{x}_2 + \cdots + c_n \lambda_n^{k}\vec{x}_n \\
+&= \lambda_1^{k}
+\left(
+c_1\vec{x}_1
++ c_2\left(\frac{\lambda_2}{\lambda_1}\right)^k\vec{x}_2
++ \cdots
++ c_n\left(\frac{\lambda_n}{\lambda_1}\right)^k\vec{x}_n
+\right).
+\end{align}
+
+Since $|\lambda_i/\lambda_1| < 1$ for $i\ge 2$,
+\begin{align}
+\left(\frac{\lambda_i}{\lambda_1}\right)^k \longrightarrow 0
+\qquad\text{as } k\to\infty.
+\end{align}
+
+Thus,
+\begin{align}
+\myvec{A}^k\vec{x}_0 \longrightarrow \lambda_1^{k} c_1 \vec{x}_1.
+\end{align}
+
+Normalizing both sides gives
+\begin{align}
+\frac{\myvec{A}^k\vec{x}_0}{\|\myvec{A}^k\vec{x}_0\|}
+\;\longrightarrow\;
+\pm\frac{\vec{x}_1}{\|\vec{x}_1\|},
+\end{align}
+which completes the proof.
+
+
+\section*{Comparison of Different SVD Algorithms}
+
+\subsection*{1. Golub--Kahan Bidiagonalization + QR (Standard SVD)}
+\textbf{How it works:} The matrix $A$ is first reduced to bidiagonal form using Householder transformations. Then, the QR algorithm is applied to extract singular values and singular vectors.  
+\begin{itemize}
+    \item \textbf{Accuracy:} Very high
+    \item \textbf{Speed:} Fast when using optimized BLAS/LAPACK libraries
+    \item \textbf{Memory Use:} Moderate
+    \item \textbf{Difficulty:} Hard to implement from scratch
+    \item \textbf{Advantages:}
+    \begin{itemize}
+        \item Most accurate and numerically stable method
+        \item Works for any shape matrix
+    \end{itemize}
+    \item \textbf{Disadvantages:}
+    \begin{itemize}
+        \item Code is long and complex
+        \item Usually depends on external numerical libraries
+    \end{itemize}
+\end{itemize}
+
+\subsection*{2. Jacobi SVD}
+\textbf{How it works:} Uses a sequence of orthogonal plane rotations to gradually diagonalize the matrix while maintaining orthogonality.  
+\begin{itemize}
+    \item \textbf{Accuracy:} Very high
+    \item \textbf{Speed:} Slow for large matrices
+    \item \textbf{Memory Use:} High
+    \item \textbf{Difficulty:} Medium
+    \item \textbf{Advantages:}
+    \begin{itemize}
+        \item Conceptually simple
+        \item Very numerically stable
+    \end{itemize}
+    \item \textbf{Disadvantages:}
+    \begin{itemize}
+        \item Extremely slow for large images
+        \item Not suitable for practical compression here
+    \end{itemize}
+\end{itemize}
+
+\subsection*{3. Randomized SVD}
+\textbf{How it works:} Multiplies $A$ with a random matrix to estimate the dominant subspace, then performs SVD on a much smaller projected matrix.  
+\begin{itemize}
+    \item \textbf{Accuracy:} High (approximate)
+    \item \textbf{Speed:} Very fast for large datasets
+    \item \textbf{Memory Use:} Low/Medium
+    \item \textbf{Difficulty:} Medium
+    \item \textbf{Advantages:}
+    \begin{itemize}
+        \item Scales well to large matrices
+        \item Low memory footprint
+        \item Efficient in machine learning applications
+    \end{itemize}
+    \item \textbf{Disadvantages:}
+    \begin{itemize}
+        \item Slight loss of accuracy
+        \item Output can vary slightly due to randomness
+    \end{itemize}
+\end{itemize}
+
+\subsection*{4. Power Iteration + Deflation (Method Used in This Project)}
+\textbf{How it works:} Power iteration is used to find the largest singular value $\sigma_1$ and associated vectors $u_1, v_1$. Then the matrix is deflated by subtracting $\sigma_1 \vec{u_1} \vec{v_1^\top}$. The process is repeated to compute the top-$k$ singular components.  
+\begin{itemize}
+    \item \textbf{Accuracy:} Good for top singular values
+    \item \textbf{Speed:} Slower when $k$ is large (computes one component at a time)
+    \item \textbf{Memory Use:} Very low
+    \item \textbf{Difficulty:} Easy
+    \item \textbf{Advantages:}
+    \begin{itemize}
+        \item Easy to understand and code
+        \item No external numerical libraries required
+        \item Illustrates SVD structure directly
+        \item Very memory efficient
+    \end{itemize}
+    \item \textbf{Disadvantages:}
+    \begin{itemize}
+        \item Converges slowly if singular values are close
+        \item Deflation introduces small numerical errors
+    \end{itemize}
+\end{itemize}
+
+
+
+
+\section*{Why This Algorithm Was Chosen}
+
+I chose the Power Iteration with Deflation algorithm because it is straightforward to implement in C and does not require external numerical libraries. 
+
+\begin{align}
+A^{T}A\,\vec{v} = \sigma^{2}\vec{v},\quad A\vec{v} = \sigma \vec{u},
+\end{align}
+
+It clearly demonstrates how singular vectors and singular values arise. This method computes only the top $k$ singular components rather than performing a full SVD, which matches the goal of image compression, where only the dominant structure of the image is needed. It is also memory efficient since it updates the matrix in place during deflation. 
+
+\subsection*{Comparison with NumPy's \texttt{svd}}
+
+To check how our SVD method compares with a standard implementation, we looked at
+\texttt{numpy.linalg.svd}. NumPy uses highly optimized code, so it is usually very fast and
+very accurate.
+
+Our method uses power iteration and deflation to get only the top $k$ singular values. This
+means we are not computing the full SVD, only the important parts needed for compression.
+
+\textbf{Accuracy:}
+For larger $k$ (for example $k = 50$ or $k = 100$), our reconstructed images look almost the
+same as the original. For small $k$ (like $k = 2$ or $k = 5$), the result is blurry, while NumPy
+still captures more detail since it does the full SVD.
+
+\textbf{Speed:}
+NumPy is faster overall because it is written in optimized C/Fortran. Our method is slower
+when $k$ is large because each additional singular value needs more power iteration steps.
+But when $k$ is small, our method is still reasonably quick.
+
+\textbf{Memory:}
+Our method uses less memory because we only store $k$ singular vectors, not the full $U$
+and $V$ matrices. This is useful when working with very large images.
+
+\textbf{In summary:}
+NumPy's SVD is the best choice when you want full accuracy and high speed. Our method is
+simpler to understand and is a good choice when we only need the top $k$ components for
+image compression.
+
+
+
+
+
+\end{document}
